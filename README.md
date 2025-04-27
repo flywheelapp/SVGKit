@@ -12,7 +12,6 @@ SVGKit is a pure Swift implementation of an SVG parser for macOS. It provides a 
   - Lines and text elements
   - Basic transformations
   - Styles and attributes
-- Full support for [Mermaid.js](https://github.com/mermaid-js/mermaid) generated SVGs
 - Pure Swift implementation with no external dependencies
 - macOS 13.0+ support
 
