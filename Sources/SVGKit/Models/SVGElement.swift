@@ -555,7 +555,7 @@ public struct SVGMarker {
                 let elements = startMarker.elements.map({
                     $0.applyTransform([translate, rotate] + trs, doc: doc, info: doc.mergeStyleForMarker(to: $0.info, from: info))
                 })
-                print(elements)
+
                 markers.append(contentsOf: elements)
             }
         }
