@@ -1,6 +1,6 @@
-import Foundation
-import CoreGraphics
 import AppKit
+import CoreGraphics
+import Foundation
 
 public struct ElementInfo {
     static let attributes = [
@@ -10,7 +10,7 @@ public struct ElementInfo {
         "stroke-dashoffset", "stroke-opacity",
         "opacity", "color", "font-family",
         "font-size", "font-style", "font-weight", "text-anchor",
-        "visibility", "display", "dominant-baseline"
+        "visibility", "display", "dominant-baseline",
     ]
 
     public var tag: String
@@ -23,27 +23,27 @@ public struct ElementInfo {
     public var rotation: Double?
     public var dyFunc: ((Double) -> (Double))? = nil
     public let uuid = UUID()
-    
+
     private func sanitizeValue(value: String) -> String {
         var value = value.trimmingCharacters(in: .whitespacesAndNewlines)
         let important = "!important"
-        
+
         if value.hasSuffix(important) {
             let dropped = value.dropLast(important.count).trimmingCharacters(in: .whitespacesAndNewlines)
             value = String(dropped)
         }
-        
+
         return value
     }
-    
+
     public func sizePropertyValue(_ name: String, in document: SVGElement, baseSize: Double) -> Double? {
         guard var value = property(name, in: document) else { return nil }
-        
+
         if value.hasSuffix("em") {
             guard let v = Double(value.dropLast(2)) else { return nil }
             return v * baseSize
         }
-        
+
         return Double(value)
     }
 
@@ -51,129 +51,129 @@ public struct ElementInfo {
         if let value = properties[name] {
             return sanitizeValue(value: value)
         }
-        
+
         var styleMap = StyleAttributes()
         if case .svg(let svgDocument) = document.element, let map = svgDocument.styleMap[uuid] {
             styleMap = map
         }
-        
+
         if let value = styleMap.specific[name] {
             return sanitizeValue(value: value)
         }
-        
+
         if let value = styleMap.inherited[name] {
             return sanitizeValue(value: value)
         }
-        
+
         return nil
     }
-    
+
     public func strokeWidth(in document: SVGElement) -> Double? {
         guard var strokeWidth = style("stroke-width", in: document) else { return nil }
         if strokeWidth.hasSuffix("px") {
             return Double(strokeWidth.dropLast(2))
         }
-        
+
         return Double(strokeWidth)
     }
-    
+
     public func maxWidth(in document: SVGElement) -> Double? {
         guard var width = style("max-width", in: document) else { return nil }
 
         if width.hasSuffix("px") {
             return Double(width.dropLast(2))
         }
-        
+
         return Double(width)
     }
-    
+
     public func style(_ name: String, in document: SVGElement) -> String? {
         if let value = style[name] {
             return sanitizeValue(value: value)
         }
-        
+
         var styleMap = StyleAttributes()
         if case .svg(let svgDocument) = document.element, let map = svgDocument.styleMap[uuid] {
             styleMap = map
         }
-        
+
         if let value = styleMap.specific[name] {
             return sanitizeValue(value: value)
         }
-        
+
         if let value = secondaryStyle.specific[name] {
             return sanitizeValue(value: value)
         }
-        
+
         if let value = properties[name] {
             return sanitizeValue(value: value)
         }
-        
+
         if let value = styleMap.inherited[name] {
             return sanitizeValue(value: value)
         }
-        
+
         if let value = secondaryStyle.inherited[name] {
             return sanitizeValue(value: value)
         }
-        
+
         return nil
     }
-    
+
     public func strokeDashArray(in document: SVGElement) -> [NSNumber]? {
         guard
             let strokeDasharray = style("stroke-dasharray", in: document),
             !strokeDasharray.isEmpty
         else { return nil }
-        
+
         var array = strokeDasharray.parseNumberArray(" ")
         if array == nil {
             array = strokeDasharray.parseNumberArray(",")
         }
-        
+
         guard
             let array,
             !array.isEmpty,
             array.reduce(0, { $0 + $1 }) != 0
         else { return nil }
-        
+
         return array.map { NSNumber(floatLiteral: $0) }
     }
-    
+
     var classes: [String] {
         guard let className else { return [] }
         return className.components(separatedBy: .whitespaces)
     }
-    
+
     func match(_ component: CSSSelectorComponent) -> Bool {
         let selector = component.selector
         if let id = selector.id, id != self.id {
             return false
         }
-        
+
         if !selector.classes.isEmpty, !Set(classes).isSuperset(of: selector.classes) {
             return false
         }
-        
+
         if let tag = selector.tag, tag != self.tag {
             return false
         }
-        
+
         return true
     }
-    
+
     mutating func mergeInfo(from info: ElementInfo) {
         var properties = info.properties
         var style = info.style
-        
+
         for (k, v) in self.properties {
             properties[k] = v
         }
-        
+
         for (k, v) in self.style {
             style[k] = v
         }
-        
+
         self.properties = properties
         self.style = style
     }
@@ -196,7 +196,7 @@ public struct SVGElement {
         case gradient(SVGGradient)
         case switchElement(SVGSwitch)
         case unknown(SVGUnknownElement)
-        
+
         public var description: String {
             switch self {
             case .svg(let document):
@@ -232,15 +232,15 @@ public struct SVGElement {
             }
         }
     }
-    
+
     public var info: ElementInfo
     public var element: Element
-    
+
     public init(info: ElementInfo, element: Element) {
         self.info = info
         self.element = element
     }
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         switch element {
         case .svg(let document):
@@ -275,7 +275,7 @@ public struct SVGElement {
             return value.applyTransform(transform, doc: doc, info: info)
         }
     }
-    
+
     var children: [SVGElement] {
         switch element {
         case .svg(let value):
@@ -298,53 +298,53 @@ public struct SVGElement {
             return []
         }
     }
-    
+
     func marker(_ id: String) -> SVGMarker? {
         guard case .svg(let document) = element else { return nil }
         return document.markerMap[id]
     }
-    
+
     public func gradient(_ id: String) -> SVGGradient? {
         guard case .svg(let document) = element else { return nil }
         return document.gradientMap[id]
     }
-    
+
     func mergeStyleForMarker(to info: ElementInfo, from source: ElementInfo) -> ElementInfo {
         var target = info
         var style = source.style
         style.removeValue(forKey: "fill")
-        var properties:[String:String] = [:]
-        
+        var properties: [String: String] = [:]
+
         for (k, v) in source.properties {
             if ElementInfo.attributes.firstIndex(of: k) == nil {
                 continue
             }
-            
+
             properties[k] = v
         }
-        
+
         for (k, v) in target.properties {
             properties[k] = v
         }
-        
+
         target.properties = properties
-        
+
         guard case .svg(let document) = element else { return target }
         let sourceStyle = document.styleMap[source.uuid] ?? .init()
-//        target.secondaryStyle = sourceStyle
-        
+        //        target.secondaryStyle = sourceStyle
+
         let targetStyle = document.styleMap[target.uuid] ?? .init()
-        
+
         for (k, v) in targetStyle.specific {
             style[k] = v
         }
-        
+
         for (k, v) in target.style {
             style[k] = v
         }
-        
+
         target.style = style
-        
+
         return target
     }
 }
@@ -353,16 +353,16 @@ public struct SVGUnknownElement {
     public var tag: String
     public var text: String = ""
     public var elements: [SVGElement] = []
-    
+
     func applyTransform(_ transforms: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var transforms = transforms
         if let t = info.transform {
             transforms.append(t)
         }
-        
+
         var value = self
         let elements = value.elements.map({ $0.applyTransform(transforms, doc: doc, info: $0.info) })
-        
+
         value.elements = elements
         return .init(info: info, element: .unknown(value))
     }
@@ -375,23 +375,23 @@ public struct SVGSwitch {
         if let t = info.transform {
             transforms.append(t)
         }
-        
+
         var value = self
         let elements = value.elements.map({ $0.applyTransform(transforms, doc: doc, info: $0.info) })
-        
+
         value.elements = elements
         return .init(info: info, element: .switchElement(value))
     }
-    
+
     public func determine() -> SVGElement? {
         guard !elements.isEmpty else { return nil }
-        
+
         for element in elements {
             if case .text = element.element {
                 return element
             }
         }
-        
+
         return elements.first
     }
 }
@@ -401,7 +401,7 @@ public struct SVGGradient {
         case percent(Double)
         case absolute(Double)
     }
-    
+
     public struct Gradient {
         public var x1: PositionValue
         public var y1: PositionValue
@@ -411,21 +411,21 @@ public struct SVGGradient {
         public var locations: [Double]
         public var colors: [String]
     }
-    
+
     public var x1: String?
     public var x2: String?
     public var y1: String?
     public var y2: String?
-    
+
     public var elements: [SVGElement] = []
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         return .init(info: info, element: .gradient(self))
     }
-    
+
     public var gradient: Gradient? {
         var start: CGPoint = .zero
-        
+
         guard
             let x1 = convertValue(x1),
             let y1 = convertValue(y1),
@@ -434,7 +434,7 @@ public struct SVGGradient {
         else { return nil }
         var locations: [Double] = []
         var colors: [String] = []
-        
+
         for element in elements {
             let info = element.info
             guard
@@ -442,20 +442,23 @@ public struct SVGGradient {
                 case .percent(let offset) = convertValue(info.properties["offset"]),
                 let color = info.properties["stop-color"]
             else { return nil }
-            
+
             locations.append(offset)
             colors.append(color)
         }
         return .init(
-            x1: x1, y1: y1, x2: x2, y2: y2,
+            x1: x1,
+            y1: y1,
+            x2: x2,
+            y2: y2,
             locations: locations,
             colors: colors
         )
     }
-    
+
     private func convertValue(_ value: String?) -> PositionValue? {
         var ret: PositionValue
-        
+
         if let value = value {
             if value.hasSuffix("%") {
                 guard let value = Double(value.dropLast()) else { return nil }
@@ -467,7 +470,7 @@ public struct SVGGradient {
         } else {
             ret = .absolute(0)
         }
-        
+
         return ret
     }
 }
@@ -486,31 +489,37 @@ public struct SVGMarker {
     public var refY = "0"
     public var viewBox: CGRect?
     public var elements: [SVGElement] = []
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         return .init(info: info, element: .marker(self))
     }
-    
-    static func handlerMarker(info: ElementInfo, doc: SVGElement, transforms: [SVGTransform], anchorProvider: MarkerAnchorProvider) -> [SVGElement] {
+
+    static func handlerMarker(
+        info: ElementInfo,
+        doc: SVGElement,
+        transforms: [SVGTransform],
+        anchorProvider: MarkerAnchorProvider
+    ) -> [SVGElement] {
         var markers: [SVGElement] = []
-        
+
         if let markerEnd = info.style("marker-end", in: doc), let endMarker = doc.marker(markerEnd) {
             if let (point, orient) = anchorProvider.endMarkerAnchor {
                 let refx = Double(endMarker.refX) ?? 0
                 let refy = Double(endMarker.refY) ?? 0
-                
+
                 var size = CGSize(width: refx, height: refy)
                 for transform in transforms {
                     size = transform.applyScale(to: size)
                 }
-                
-                let translate = SVGTransform(transforms: [.translate(x: point.x - size.width, y: point.y - size.height)])
+
+                let translate = SVGTransform(transforms: [.translate(x: point.x - size.width, y: point.y - size.height)]
+                )
                 let trs = transforms.map({
                     var value = $0
                     value.transforms = value.transforms.map({ $0.scaleAndRotate })
                     return value
                 })
-                
+
                 let dx = point.x - orient.x
                 let dy = point.y - orient.y
                 let rotation = atan2(dy, dx)
@@ -526,12 +535,12 @@ public struct SVGMarker {
                 markers = elements
             }
         }
-        
+
         if let markerStart = info.style("marker-start", in: doc), let startMarker = doc.marker(markerStart) {
             if let (point, orient) = anchorProvider.startMarkerAnchor {
                 let refx = Double(startMarker.refX) ?? 0
                 let refy = Double(startMarker.refY) ?? 0
-                
+
                 var offset = point
                 var size = CGSize(width: refx, height: refy)
                 var markerSize = CGSize(width: startMarker.markerWidth, height: startMarker.markerHeight)
@@ -539,27 +548,33 @@ public struct SVGMarker {
                     size = transform.applyScale(to: size)
                     markerSize = transform.applyScale(to: markerSize)
                 }
-                
-                let translate = SVGTransform(transforms: [.translate(x: offset.x - size.width, y: offset.y - size.height)])
+
+                let translate = SVGTransform(transforms: [
+                    .translate(x: offset.x - size.width, y: offset.y - size.height)
+                ])
                 let trs = transforms.map({
                     var value = $0
                     value.transforms = value.transforms.map({ $0.scaleAndRotate })
                     return value
                 })
-                
+
                 let dx = orient.x - point.x
                 let dy = orient.y - point.y
                 let rotation = atan2(dy, dx)
                 let rotate = SVGTransform(transforms: [.rotate(degree: rotation, x: size.width, y: size.height)])
 
                 let elements = startMarker.elements.map({
-                    $0.applyTransform([translate, rotate] + trs, doc: doc, info: doc.mergeStyleForMarker(to: $0.info, from: info))
+                    $0.applyTransform(
+                        [translate, rotate] + trs,
+                        doc: doc,
+                        info: doc.mergeStyleForMarker(to: $0.info, from: info)
+                    )
                 })
 
                 markers.append(contentsOf: elements)
             }
         }
-        
+
         return markers
     }
 }
@@ -573,7 +588,7 @@ public struct SVGTransform {
         case rotate(degree: Double, x: Double, y: Double)
         case skewX(Double)
         case skewY(Double)
-        
+
         var cg: CGAffineTransform {
             switch self {
             case .matrix(a: let a, b: let b, c: let c, d: let d, e: let e, f: let f):
@@ -594,7 +609,7 @@ public struct SVGTransform {
                 return CGAffineTransform(a: 1, b: skewY, c: 0, d: 1, tx: 0, ty: 0)
             }
         }
-        
+
         var scaleAndRotate: Transform {
             switch self {
             case .matrix(a: let a, b: let b, c: let c, d: let d, e: let e, f: let f):
@@ -605,7 +620,7 @@ public struct SVGTransform {
                 return self
             }
         }
-        
+
         var rotation: Double {
             switch self {
             case .matrix(a: let a, b: let b, _, _, _, _):
@@ -617,24 +632,24 @@ public struct SVGTransform {
             }
         }
     }
-    
+
     public var transforms: [Transform]
-    
+
     public init(transforms: [Transform]) {
         self.transforms = transforms
     }
-    
+
     static func rotateAround(degree: Double, x: Double, y: Double) -> CGAffineTransform {
         return CGAffineTransform.identity
             .translatedBy(x: x, y: y)
             .rotated(by: degree)
             .translatedBy(x: -x, y: -y)
     }
-    
+
     var rotation: Double {
         transforms.reduce(0.0, { $0 + $1.rotation })
     }
-    
+
     func applyRotateAndTranslation(to point: CGPoint) -> CGPoint {
         var point = point
         for transform in transforms.reversed() {
@@ -660,7 +675,7 @@ public struct SVGTransform {
                 tr = CGAffineTransform(translationX: x, y: y)
             case .scale(x: let x, y: let y):
                 tr = .identity
-//                tr = CGAffineTransform(scaleX: x, y: y)
+            //                tr = CGAffineTransform(scaleX: x, y: y)
             case .rotate(degree: let degree, x: let x, y: let y):
                 tr = SVGTransform.rotateAround(degree: degree, x: x, y: y)
             case .skewX(let x):
@@ -675,7 +690,7 @@ public struct SVGTransform {
         }
         return point
     }
-    
+
     func apply(to point: CGPoint) -> CGPoint {
         var point = point
         for transform in transforms.reversed() {
@@ -683,7 +698,7 @@ public struct SVGTransform {
         }
         return point
     }
-    
+
     func applyScale(to size: CGSize) -> CGSize {
         var value = size
         for transform in transforms {
@@ -702,7 +717,7 @@ public struct SVGTransform {
         }
         return value
     }
-    
+
     func applyScale(value: Double) -> Double {
         var value = value
         for transform in transforms {
@@ -719,11 +734,11 @@ public struct SVGTransform {
         }
         return value
     }
-    
+
     var scale: (Double, Double) {
         var scaleX = 1.0
         var scaleY = 1.0
-        
+
         for transform in transforms {
             switch transform {
             case .scale(let x, let y):
@@ -747,11 +762,11 @@ public struct SVGRect {
     public var height: Double
     public var rx: Double?
     public var ry: Double?
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         var info = info
-        
+
         var transforms = transform
         if let t = info.transform {
             transforms.append(t)
@@ -760,31 +775,31 @@ public struct SVGRect {
         var rx = rx
         var ry = ry
         var size = CGSize(width: width, height: height)
-        var center = CGPoint(x: x + width/2, y: y + height/2)
+        var center = CGPoint(x: x + width / 2, y: y + height / 2)
         var rotation = info.rotation ?? 0
         for transform in transforms.reversed() {
             center = transform.apply(to: center)
             size = transform.applyScale(to: size)
-            
+
             if let v = rx {
                 rx = transform.applyScale(value: v)
             }
-            
+
             if let v = ry {
                 ry = transform.applyScale(value: v)
             }
-            
+
             rotation += transform.rotation
         }
-        
+
         value.rx = rx
         value.ry = ry
-        value.x = center.x - size.width/2
-        value.y = center.y - size.height/2
+        value.x = center.x - size.width / 2
+        value.y = center.y - size.height / 2
         value.height = size.height
         value.width = size.width
         info.rotation = rotation
-        
+
         return .init(info: info, element: .rect(value))
     }
 }
@@ -793,15 +808,15 @@ public struct SVGCircle: CustomStringConvertible {
     public var cx: Double
     public var cy: Double
     public var r: Double
-    
+
     public var description: String {
         return "<circle \(cx) \(cy) \(r)>"
     }
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         var info = info
-        
+
         var transforms = transform
         if let t = info.transform {
             transforms.append(t)
@@ -812,10 +827,10 @@ public struct SVGCircle: CustomStringConvertible {
             center = transform.apply(to: center)
             value.r = transform.applyScale(value: value.r)
         }
-        
+
         value.cx = center.x
         value.cy = center.y
-        
+
         return .init(info: info, element: .circle(value))
     }
 }
@@ -826,26 +841,26 @@ public struct SVGLine: MarkerAnchorProvider {
     public var y1: Double
     public var x2: Double
     public var y2: Double
-    
+
     public var markerElements: [SVGElement] = []
-    
+
     var startMarkerAnchor: (CGPoint, CGPoint)? {
         (CGPoint(x: x1, y: y1), CGPoint(x: x2, y: y2))
     }
-    
+
     var endMarkerAnchor: (CGPoint, CGPoint)? {
         (CGPoint(x: x2, y: y2), CGPoint(x: x1, y: y1))
     }
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         var info = info
-        
+
         var transforms = transform
         if let t = info.transform {
             transforms.append(t)
         }
-        
+
         var point1 = CGPoint(x: x1, y: y1)
         var point2 = CGPoint(x: x2, y: y2)
         for transform in transforms.reversed() {
@@ -857,10 +872,14 @@ public struct SVGLine: MarkerAnchorProvider {
         value.y1 = point1.y
         value.x2 = point2.x
         value.y2 = point2.y
-        
+
         value.markerElements = SVGMarker.handlerMarker(
-            info: info, doc: doc, transforms: transforms, anchorProvider: value)
-        
+            info: info,
+            doc: doc,
+            transforms: transforms,
+            anchorProvider: value
+        )
+
         return .init(info: info, element: .line(value))
     }
 }
@@ -880,11 +899,11 @@ public struct SVGForeignObject {
     public var y: Double
     public var height: Double?
     public var width: Double?
-    
+
     public var elements: [SVGElement] = []
-    
+
     var transforms: [SVGTransform] = []
-    
+
     public func textInfo(doc: SVGElement, foreignInfo: ElementInfo) -> TextElement? {
         var items = self.elements
         var info = ElementInfo(tag: "")
@@ -893,12 +912,12 @@ public struct SVGForeignObject {
             var next: [SVGElement] = []
             for element in items {
                 guard case .unknown(let object) = element.element else { continue }
-                
+
                 if object.text == "" {
                     next.append(contentsOf: object.elements)
                     continue
                 }
-                
+
                 next = []
                 targetUnkown = object
                 info = element.info
@@ -920,58 +939,58 @@ public struct SVGForeignObject {
             color: info.style("color", in: doc)
         )
     }
-    
+
     private func doTransform(info: ElementInfo) -> (CGPoint, Double) {
         let height = self.height ?? 0
         let width = self.width ?? 0
 
         var size = CGSize(width: width, height: height)
-        var center = CGPoint(x: x + width/2, y: y + height/2)
-        
+        var center = CGPoint(x: x + width / 2, y: y + height / 2)
+
         var rotation = info.rotation ?? 0
         for transform in transforms.reversed() {
             center = transform.apply(to: center)
             size = transform.applyScale(to: size)
-            
+
             rotation += transform.rotation
         }
-        
-        let point = CGPoint(x: center.x - size.width/2, y: center.y - size.height/2)
-        
+
+        let point = CGPoint(x: center.x - size.width / 2, y: center.y - size.height / 2)
+
         return (point, rotation)
     }
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
-        
+
         var transforms = transform
         if let t = info.transform {
             transforms.append(t)
         }
-        
+
         value.transforms = transforms
 
         return .init(info: info, element: .foreignobject(value))
     }
-    
+
     private func scaleFontSize(doc: SVGElement, info: ElementInfo) -> Double? {
         var fontSize: Double? = nil
         if let size = info.style("font-size", in: doc) {
             if size.hasSuffix("px"), let parsed = Double(size.dropLast(2)) {
                 fontSize = parsed
             }
-            
+
             if fontSize == nil {
                 fontSize = Double(size)
             }
         }
-        
+
         for transform in transforms.reversed() {
             if let size = fontSize {
                 fontSize = transform.applyScale(value: size)
             }
         }
-        
+
         return fontSize
     }
 }
@@ -979,7 +998,7 @@ public struct SVGForeignObject {
 /// Represents an SVG text element - commonly used in Mermaid diagrams
 public struct SVGText {
     private let defaultFontSize = 13.0
-    
+
     public var x: String = ""
     public var y: String = ""
     public var content: String = ""
@@ -988,51 +1007,56 @@ public struct SVGText {
     public var dx: String?
     public var dy: String?
     public var start: CGPoint = .zero
-    
+
     private var _textElement: TextElement? = nil
-    
-    public func textElement(document: SVGElement, info: ElementInfo)  -> TextElement? {
+
+    public func textElement(document: SVGElement, info: ElementInfo) -> TextElement? {
         if let element = _textElement {
             return element
         }
-        
+
         let fontSize = scaledFontSize(doc: document, info: info)
         let point = parseXY(x: info.properties["x"] ?? "", y: info.properties["y"] ?? "", fontSize: fontSize)
         return .init(info: info, start: point, text: content, fontSize: fontSize)
     }
-    
+
     public var elements: [SVGElement] = []
-    
+
     private func parseXY(x: String, y: String, fontSize: Double? = nil) -> CGPoint {
         let currentFontSize = fontSize ?? self.fontSize ?? defaultFontSize
-        
+
         var xValue: Double
         if x.hasSuffix("em") {
             xValue = (Double(x.dropLast(2)) ?? 0) * currentFontSize
         } else {
             xValue = Double(x) ?? 0
         }
-        
+
         var yValue: Double
         if y.hasSuffix("em") {
             yValue = (Double(y.dropLast(2)) ?? 0) * currentFontSize
         } else {
             yValue = Double(y) ?? 0
         }
-        
+
         return CGPoint(x: xValue, y: yValue)
     }
-    
-    public func xxxx(element: SVGElement, in document: SVGElement, textInfo: ElementInfo, stack: inout [TextElement]) -> [TextElement] {
+
+    public func xxxx(
+        element: SVGElement,
+        in document: SVGElement,
+        textInfo: ElementInfo,
+        stack: inout [TextElement]
+    ) -> [TextElement] {
         guard case .unknown(let value) = element.element else { return [] }
-        
+
         let info = element.info
 
         var fontSize = self.fontSize
         if let value = scaledFontSize(doc: document, info: info) {
             fontSize = value
         }
-        
+
         let x = info.properties["x"] ?? ""
         let y = info.property("y", in: document) ?? ""
 
@@ -1051,22 +1075,22 @@ public struct SVGText {
             last.text = text
             stack[stack.count - 1] = last
         }
-        
+
         var childResult: [TextElement] = []
         for child in value.elements {
             childResult.append(contentsOf: xxxx(element: child, in: document, textInfo: child.info, stack: &stack))
         }
-        
+
         if isPushed, let last = stack.popLast() {
             return [last] + childResult
         }
-        
+
         return childResult
     }
-    
+
     public func walkElements(in document: SVGElement, textInfo: ElementInfo) -> [SVGElement] {
         var elementStack: [TextElement] = []
-        
+
         var result: [TextElement] = []
         for el in elements {
             result.append(contentsOf: xxxx(element: el, in: document, textInfo: el.info, stack: &elementStack))
@@ -1076,24 +1100,24 @@ public struct SVGText {
         return result.map({
             var info = $0.info
             let dy = info.property("dy", in: document)
-            
+
             var base = currentDy
             if info.property("y", in: document) != nil {
                 base = { (base: Double) in 0.0 }
             }
-            
+
             currentDy = genDyFunc(baseFunc: base, v2: dy)
             info.dyFunc = currentDy
-            
+
             let text = SVGText(transforms: transforms, _textElement: $0)
             return .init(info: info, element: .text(text))
         })
     }
-    
+
     private func genDyFunc(baseFunc: @escaping (Double) -> (Double), v2: String?) -> (Double) -> (Double) {
         return { base in
             guard let v2 else { return baseFunc(base) }
-            
+
             var value = 0.0
             if v2.hasSuffix("em") {
                 guard let value2 = Double(v2.dropLast(2)) else { return baseFunc(base) }
@@ -1102,30 +1126,30 @@ public struct SVGText {
                 guard let value2 = Double(v2) else { return baseFunc(base) }
                 value = value2
             }
-            
+
             return baseFunc(base) + value
         }
     }
-    
+
     public func transform(document: SVGElement, boundSize: CGSize, font: NSFont, text: TextElement) -> SVGElement {
         var value = self
         var info = text.info
-        
+
         var textAnchor = info.style("text-anchor", in: document) ?? ""
         var dominantBaseline = info.style("dominant-baseline", in: document) ?? ""
 
         var start = text.start
         value.start = start
-        
+
         var scaleX = 1.0
         var scaleY = 1.0
-        
+
         for transform in transforms.reversed() {
             let (x, y) = transform.scale
             scaleX *= x
             scaleY *= y
         }
-        
+
         switch textAnchor {
         case "start":
             break
@@ -1136,7 +1160,7 @@ public struct SVGText {
         default:
             break
         }
-        
+
         switch dominantBaseline {
         case "middle":
             let height = font.ascender + font.descender
@@ -1158,71 +1182,71 @@ public struct SVGText {
             center = transform.apply(to: center)
             rotation += transform.rotation
         }
-        
-        value.start = CGPoint(x: center.x - boundSize.width/2, y: center.y - boundSize.height/2)
+
+        value.start = CGPoint(x: center.x - boundSize.width / 2, y: center.y - boundSize.height / 2)
         info.rotation = rotation
-        
+
         return .init(info: info, element: .text(value))
     }
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
-        
+
         var transforms = transform
         if let t = info.transform {
             transforms.append(t)
         }
-        
+
         value.transforms = transforms
 
         return .init(info: info, element: .text(value))
     }
-    
+
     public func scaleFontSize(doc: SVGElement, info: ElementInfo) -> SVGText {
         var value = self
-        
+
         var fontSize: Double? = nil
         if let size = info.style("font-size", in: doc) {
             if size.hasSuffix("px"), let parsed = Double(size.dropLast(2)) {
                 fontSize = parsed
             }
-            
+
             if fontSize == nil {
                 fontSize = Double(size)
             }
         }
-        
+
         for transform in transforms.reversed() {
             if let size = fontSize {
                 fontSize = transform.applyScale(value: size)
             }
         }
-        
+
         if let fontSize {
             value.fontSize = fontSize
         }
 
         return value
     }
-    
+
     private func scaledFontSize(doc: SVGElement, info: ElementInfo) -> Double? {
         var fontSize: Double? = nil
         if let size = info.style("font-size", in: doc) {
             if size.hasSuffix("px"), let parsed = Double(size.dropLast(2)) {
                 fontSize = parsed
             }
-            
+
             if fontSize == nil {
                 fontSize = Double(size)
             }
         }
-        
+
         for transform in transforms.reversed() {
             if let size = fontSize {
                 fontSize = transform.applyScale(value: size)
             }
         }
-        
+
         return fontSize
     }
 }
@@ -1234,7 +1258,7 @@ public struct SVGText {
 //    public var width: CGFloat
 //    public var height: CGFloat
 //    public var content: String
-//    
+//
 //    public init(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, content: String, id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.x = x
 //        self.y = y
@@ -1248,7 +1272,7 @@ public struct SVGText {
 /// Represents an SVG polygon element - used in Mermaid diagrams for certain shapes
 public struct SVGPolygon {
     public var points: [CGPoint]
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         var transforms = transform
@@ -1259,7 +1283,7 @@ public struct SVGPolygon {
         for transform in transforms.reversed() {
             value.points = value.points.map({ transform.apply(to: $0) })
         }
-        
+
         return .init(info: info, element: .polygon(value))
     }
 }
@@ -1267,16 +1291,16 @@ public struct SVGPolygon {
 /// Represents an SVG group element
 public struct SVGGroup {
     public var elements: [SVGElement]
-    
+
     func applyTransform(_ transforms: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var transforms = transforms
         if let t = info.transform {
             transforms.append(t)
         }
-        
+
         var value = self
         let elements = value.elements.map({ $0.applyTransform(transforms, doc: doc, info: $0.info) })
-        
+
         value.elements = elements
         return .init(info: info, element: .group(value))
     }
@@ -1297,19 +1321,19 @@ public struct SVGDocument {
     public var styleMap: [UUID: StyleAttributes] = [:]
     public var markerMap: [String: SVGMarker] = [:]
     public var gradientMap: [String: SVGGradient] = [:]
-    
+
     func applyTransform(_ transforms: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         let elements = value.elements.map({ $0.applyTransform(transforms, doc: doc, info: $0.info) })
         value.elements = elements
         return .init(info: info, element: .svg(value))
     }
-    
+
     mutating func applyStyle(_ style: CSSStylesheet?, info: ElementInfo) -> SVGDocument {
         collectItems()
-        
+
         guard let style else { return self }
-        
+
         for rule in style.rules {
             matchRule(rule, info: info)
         }
@@ -1318,11 +1342,11 @@ public struct SVGDocument {
 
         return self
     }
-    
+
     private mutating func collectItems() {
         var items = elements
         var next: [SVGElement] = []
-        
+
         while !items.isEmpty {
             next = []
             for element in items {
@@ -1331,7 +1355,7 @@ public struct SVGDocument {
                     if let id = element.info.id {
                         markerMap["url(#\(id))"] = marker
                     }
-                    
+
                     continue
                 case .gradient(let gradient):
                     if let id = element.info.id {
@@ -1341,25 +1365,25 @@ public struct SVGDocument {
                 default:
                     break
                 }
-                
+
                 next.append(contentsOf: element.children)
             }
-            
+
             items = next
         }
     }
-    
+
     private mutating func propagateProperties(info: ElementInfo) {
         distributeOneElement(element: .init(info: info, element: .svg(self)), info: info)
     }
-    
+
     private mutating func distributeOneElement(element: SVGElement, info: ElementInfo) {
         let children = element.children
         guard !children.isEmpty else { return }
-        
+
         let style = info.style
         let properties = info.properties
-        
+
         for child in children {
             var styles = styleMap[child.info.uuid] ?? .init()
             for (k, v) in properties {
@@ -1369,36 +1393,36 @@ public struct SVGDocument {
                 styles.inherited[k] = v
             }
             styleMap[child.info.uuid] = styles
-            
+
             distributeOneElement(element: child, info: info)
             distributeOneElement(element: child, info: child.info)
         }
     }
-    
+
     private mutating func matchRule(_ rule: CSSRule, info: ElementInfo) {
         let group = CSSSelectorGroup(rule.selector.value)
-        
+
         var target: [SVGElement] = []
         var elements: [SVGElement] = [.init(info: info, element: .svg(self))]
         for component in group.components {
             if component.selector.tag == "tspan" {
                 break
             }
-            
+
             target = selectElements(component: component, in: elements)
             elements = target.flatMap({ $0.children })
         }
-        
+
         applyRule(elements: target, rule: rule, level: 0)
     }
-    
+
     private mutating func applyRule(elements: [SVGElement], rule: CSSRule, level: Int) {
         var level = level
-        
+
         for element in elements {
             let uuid = element.info.uuid
             var map = styleMap[uuid] ?? .init()
-            
+
             for (k, v) in rule.properties {
                 if level == 0 {
                     map.specific[k] = v
@@ -1406,27 +1430,27 @@ public struct SVGDocument {
                     map.inherited[k] = v
                 }
             }
-            
+
             styleMap[uuid] = map
-            
+
             applyRule(elements: element.children, rule: rule, level: level + 1)
         }
     }
-    
+
     private func selectElements(component: CSSSelectorComponent, in elements: [SVGElement]) -> [SVGElement] {
         var ret: [SVGElement] = []
-        
+
         for element in elements {
             let info = element.info
-            
+
             if info.match(component) {
                 ret.append(element)
                 continue
             }
-            
+
             ret.append(contentsOf: selectElements(component: component, in: element.children))
         }
-        
+
         return ret
     }
 }
@@ -1438,11 +1462,11 @@ public struct SVGEllipse {
     public var cy: CGFloat
     public var rx: CGFloat
     public var ry: CGFloat
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         var info = info
-        
+
         var transforms = transform
         if let t = info.transform {
             transforms.append(t)
@@ -1456,7 +1480,7 @@ public struct SVGEllipse {
             size = transform.applyScale(to: size)
             rotation += transform.rotation
         }
-        
+
         value.cx = center.x
         value.cy = center.y
         value.rx = size.width
@@ -1470,7 +1494,7 @@ public struct SVGEllipse {
 public struct SVGPolyline {
     public var info: ElementInfo?
     public var points: [CGPoint]
-    
+
     func applyTransform(_ transform: [SVGTransform], doc: SVGElement, info: ElementInfo) -> SVGElement {
         var value = self
         var transforms = transform
@@ -1481,7 +1505,7 @@ public struct SVGPolyline {
         for transform in transforms.reversed() {
             value.points = value.points.map({ transform.apply(to: $0) })
         }
-        
+
         return .init(info: info, element: .polyline(value))
     }
 }
@@ -1491,7 +1515,7 @@ public struct SVGGradientStop {
     public var offset: CGFloat
     public var color: String
     public var opacity: CGFloat?
-    
+
     public init(offset: CGFloat, color: String, opacity: CGFloat? = nil) {
         self.offset = offset
         self.color = color
@@ -1504,14 +1528,14 @@ public struct SVGGradientStop {
 //    public var stops: [SVGGradientStop]
 //    public var gradientUnits: String?
 //    public var spreadMethod: String?
-//    
+//
 //    public init(stops: [SVGGradientStop] = [], gradientUnits: String? = nil, spreadMethod: String? = nil, id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.stops = stops
 //        self.gradientUnits = gradientUnits
 //        self.spreadMethod = spreadMethod
 //        super.init(id: id, className: className, style: style, transform: transform)
 //    }
-//    
+//
 //    public func addStop(offset: CGFloat, color: String, opacity: CGFloat? = nil) {
 //        stops.append(SVGGradientStop(offset: offset, color: color, opacity: opacity))
 //    }
@@ -1523,7 +1547,7 @@ public struct SVGGradientStop {
 //    public var y1: CGFloat?
 //    public var x2: CGFloat?
 //    public var y2: CGFloat?
-//    
+//
 //    public init(x1: CGFloat? = nil, y1: CGFloat? = nil, x2: CGFloat? = nil, y2: CGFloat? = nil, stops: [SVGGradientStop] = [], gradientUnits: String? = nil, spreadMethod: String? = nil, id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.x1 = x1
 //        self.y1 = y1
@@ -1541,7 +1565,7 @@ public struct SVGGradientStop {
 //    public var fx: CGFloat?
 //    public var fy: CGFloat?
 //    public var fr: CGFloat?
-//    
+//
 //    public init(cx: CGFloat? = nil, cy: CGFloat? = nil, r: CGFloat? = nil, fx: CGFloat? = nil, fy: CGFloat? = nil, fr: CGFloat? = nil, stops: [SVGGradientStop] = [], gradientUnits: String? = nil, spreadMethod: String? = nil, id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.cx = cx
 //        self.cy = cy
@@ -1562,7 +1586,7 @@ public struct SVGGradientStop {
 //    public var patternUnits: String?
 //    public var patternContentUnits: String?
 //    public var elements: [SVGElement]
-//    
+//
 //    public init(x: CGFloat? = nil, y: CGFloat? = nil, width: CGFloat? = nil, height: CGFloat? = nil, patternUnits: String? = nil, patternContentUnits: String? = nil, elements: [SVGElement] = [], id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.x = x
 //        self.y = y
@@ -1573,7 +1597,7 @@ public struct SVGGradientStop {
 //        self.elements = elements
 //        super.init(id: id, className: className, style: style, transform: transform)
 //    }
-//    
+//
 //    public func addElement(_ element: SVGElement) {
 //        elements.append(element)
 //    }
@@ -1586,7 +1610,7 @@ public struct SVGGradientStop {
 //    public var width: CGFloat
 //    public var height: CGFloat
 //    public var href: String
-//    
+//
 //    public init(x: CGFloat, y: CGFloat, width: CGFloat, height: CGFloat, href: String, id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.x = x
 //        self.y = y
@@ -1601,13 +1625,13 @@ public struct SVGGradientStop {
 //public class SVGSymbol: BaseSVGElement {
 //    public var viewBox: CGRect?
 //    public var elements: [SVGElement]
-//    
+//
 //    public init(viewBox: CGRect? = nil, elements: [SVGElement] = [], id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.viewBox = viewBox
 //        self.elements = elements
 //        super.init(id: id, className: className, style: style, transform: transform)
 //    }
-//    
+//
 //    public func addElement(_ element: SVGElement) {
 //        elements.append(element)
 //    }
@@ -1620,7 +1644,7 @@ public struct SVGGradientStop {
 //    public var width: CGFloat?
 //    public var height: CGFloat?
 //    public var href: String
-//    
+//
 //    public init(x: CGFloat? = nil, y: CGFloat? = nil, width: CGFloat? = nil, height: CGFloat? = nil, href: String, id: String? = nil, className: String? = nil, style: [String: String] = [:], transform: SVGTransform? = nil) {
 //        self.x = x
 //        self.y = y
@@ -1629,4 +1653,4 @@ public struct SVGGradientStop {
 //        self.href = href
 //        super.init(id: id, className: className, style: style, transform: transform)
 //    }
-//} 
+//}
