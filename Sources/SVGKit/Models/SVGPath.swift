@@ -41,11 +41,11 @@ public enum SVGPathSegment: Equatable, CustomStringConvertible {
             return (point, nil)
         case .lineTo(let point):
             return (point, nil)
-        case .cubicCurveTo(let control1, let control2, let end):
+        case .cubicCurveTo(_, let control2, let end):
             return (end, control2)
         case .quadraticCurveTo(let control, let end):
             return (end, control)
-        case .arcTo(let rx, let ry, let xAxisRotation, let largeArcFlag, let sweepFlag, let end):
+        case .arcTo(_, _, _, _, _, let end):
             return (end, nil)
         case .closePath:
             return nil
@@ -58,11 +58,11 @@ public enum SVGPathSegment: Equatable, CustomStringConvertible {
             return (point, nil)
         case .lineTo(let point):
             return (point, nil)
-        case .cubicCurveTo(let control1, let control2, let end):
+        case .cubicCurveTo(let control1, _, _):
             return (nil, control1)
-        case .quadraticCurveTo(let control, let end):
+        case .quadraticCurveTo(let control, _):
             return (nil, control)
-        case .arcTo(let rx, let ry, let xAxisRotation, let largeArcFlag, let sweepFlag, let end):
+        case .arcTo(_, _, _, _, _, _):
             return (nil, nil)
         case .closePath:
             return nil
@@ -119,6 +119,10 @@ public struct SVGPath: MarkerAnchorProvider {
         self.segments = segments
     }
 
+    public static func parse(_ data: String) -> SVGPath {
+        return SVGPathParser.shared.parse(d: data)
+    }
+
     var endMarkerAnchor: (CGPoint, CGPoint)? {
         var end: CGPoint?
         var prev: CGPoint?
@@ -153,7 +157,7 @@ public struct SVGPath: MarkerAnchorProvider {
         var start: CGPoint?
         var next: CGPoint?
 
-        var items = segments
+        let items = segments
         if let (point, orient) = items.first?.startMarkerAnchor {
             start = point
             next = orient

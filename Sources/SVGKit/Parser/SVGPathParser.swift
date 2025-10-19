@@ -1,16 +1,16 @@
 import Foundation
 
-public class SVGPathParser {
+class SVGPathParser {
+    static let shared = SVGPathParser()
+
     private var currentPoint: CGPoint = .zero
     private var lastControlPoint: CGPoint?
-    private var pathData: SVGPath
+    private var pathData: SVGPath!
 
-    public init() {
-        self.pathData = SVGPath()
-    }
+    private init() {}
 
-    public func parse(d: String) -> SVGPath {
-        self.pathData = SVGPath()
+    func parse(d: String) -> SVGPath {
+        pathData = SVGPath()
         currentPoint = .zero
         lastControlPoint = nil
 
@@ -39,7 +39,9 @@ public class SVGPathParser {
             executeCommand(currentCommand, values: currentValues)
         }
 
-        return self.pathData
+        let path = pathData!
+        pathData = nil
+        return path
     }
 
     private func executeCommand(_ command: Character, values: [Double]) {

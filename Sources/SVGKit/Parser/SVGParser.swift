@@ -53,12 +53,10 @@ public class SVGParser: NSObject, XMLParserDelegate {
     private var currentAttributes: [String: String] = [:]
     private var document: SVGElement?
     private var elementStack: [StackElement] = []
-    private var pathParser: SVGPathParser
     private var currentText = ""
     private var styleRules: CSSStylesheet?
 
     public override init() {
-        self.pathParser = SVGPathParser()
         super.init()
     }
 
@@ -188,13 +186,13 @@ public class SVGParser: NSObject, XMLParserDelegate {
         let width = parseCGFloat(from: attributes["width"])
         let height = parseCGFloat(from: attributes["height"])
         let viewBox = parseViewBox(from: attributes["viewBox"])
-        var element = SVGDocument(width: width, height: height, viewBox: viewBox)
+        let element = SVGDocument(width: width, height: height, viewBox: viewBox)
         let info = parseElementInfo(from: attributes)
         return .init(info: info, element: .svg(element))
     }
 
     private func createUnknownElement(tag: String, from attributes: [String: String]) -> SVGElement {
-        var element = SVGUnknownElement(tag: tag)
+        let element = SVGUnknownElement(tag: tag)
         let info = parseElementInfo(from: attributes)
         return .init(info: info, element: .unknown(element))
     }
@@ -245,7 +243,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
 
     private func createSVGPath(from attributes: [String: String]) -> SVGElement {
         let pathDataString = attributes["d"] ?? ""
-        var path = SVGPathElement(path: pathParser.parse(d: pathDataString))
+        let path = SVGPathElement(path: SVGPathParser.shared.parse(d: pathDataString))
         let info = parseElementInfo(from: attributes)
         return .init(info: info, element: .path(path))
     }
@@ -258,7 +256,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
         let rx = parseCGFloat(from: attributes["rx"])
         let ry = parseCGFloat(from: attributes["ry"])
 
-        var rect = SVGRect(x: x, y: y, width: width, height: height, rx: rx, ry: ry)
+        let rect = SVGRect(x: x, y: y, width: width, height: height, rx: rx, ry: ry)
         let info = parseElementInfo(from: attributes)
 
         return .init(info: info, element: .rect(rect))
@@ -269,7 +267,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
         let cy = parseCGFloat(from: attributes["cy"]) ?? 0
         let r = parseCGFloat(from: attributes["r"]) ?? 0
 
-        var circle = SVGCircle(cx: cx, cy: cy, r: r)
+        let circle = SVGCircle(cx: cx, cy: cy, r: r)
         let info = parseElementInfo(from: attributes)
 
         return .init(info: info, element: .circle(circle))
@@ -281,7 +279,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
         let rx = parseCGFloat(from: attributes["rx"]) ?? 0
         let ry = parseCGFloat(from: attributes["ry"]) ?? 0
 
-        var ellipse = SVGEllipse(cx: cx, cy: cy, rx: rx, ry: ry)
+        let ellipse = SVGEllipse(cx: cx, cy: cy, rx: rx, ry: ry)
         let info = parseElementInfo(from: attributes)
 
         return .init(info: info, element: .ellipse(ellipse))
@@ -293,7 +291,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
         let x2 = parseCGFloat(from: attributes["x2"]) ?? 0
         let y2 = parseCGFloat(from: attributes["y2"]) ?? 0
 
-        var line = SVGLine(x1: x1, y1: y1, x2: x2, y2: y2)
+        let line = SVGLine(x1: x1, y1: y1, x2: x2, y2: y2)
         let info = parseElementInfo(from: attributes)
 
         return .init(info: info, element: .line(line))
@@ -319,7 +317,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
         let height = parseCGFloat(from: attributes["height"])
         let width = parseCGFloat(from: attributes["width"])
 
-        var object = SVGForeignObject(x: x, y: y, height: height, width: width)
+        let object = SVGForeignObject(x: x, y: y, height: height, width: width)
         return .init(info: parseElementInfo(from: attributes), element: .foreignobject(object))
     }
 
@@ -351,7 +349,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
     private func createSVGPolygon(from attributes: [String: String]) -> SVGElement {
         let points = attributes["points"] ?? ""
 
-        var polygon = SVGPolygon(points: parsePoints(points))
+        let polygon = SVGPolygon(points: parsePoints(points))
         let info = parseElementInfo(from: attributes)
         return .init(info: info, element: .polygon(polygon))
     }
@@ -359,7 +357,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
     private func createSVGPolyline(from attributes: [String: String]) -> SVGElement {
         let points = attributes["points"] ?? ""
 
-        var polyline = SVGPolyline(points: parsePoints(points))
+        let polyline = SVGPolyline(points: parsePoints(points))
         let info = parseElementInfo(from: attributes)
 
         return .init(info: info, element: .polyline(polyline))
@@ -387,7 +385,7 @@ public class SVGParser: NSObject, XMLParserDelegate {
     }
 
     private func createSVGGroup(from attributes: [String: String]) -> SVGElement {
-        var group = SVGGroup(elements: [])
+        let group = SVGGroup(elements: [])
         let info = parseElementInfo(from: attributes)
         return .init(info: info, element: .group(group))
     }
@@ -413,11 +411,6 @@ public class SVGParser: NSObject, XMLParserDelegate {
 
         // Handle percentage values
         if string.hasSuffix("%") {
-            guard
-                let document = elementStack.first,
-                let frame = document.frame
-            else { return nil }
-
             if let value = Double(string.dropLast()) {
                 return CGFloat(value) / 100.0
             }
@@ -495,8 +488,6 @@ public class SVGParser: NSObject, XMLParserDelegate {
         )
 
         var transforms: [SVGTransform.Transform] = []
-        // For simplicity, we'll just support common transforms and convert to a matrix
-        var resultMatrix = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]  // Identity matrix
         for match in matches {
             guard let typeRange = Range(match.range(at: 1), in: transformString),
                 let valuesRange = Range(match.range, in: transformString)
